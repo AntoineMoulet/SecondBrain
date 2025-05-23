@@ -20,19 +20,23 @@ else
 fi
 echo "✅ Virtual environment is ready"
 
-# Check environment variables
-if [ ! -f ".env" ]; then
-    echo "❌ .env file not found"
+# Check if activate-env exists in venv
+if [ ! -f ".venv/bin/activate-env" ]; then
+    echo "❌ activate-env file not found in .venv/bin/"
     exit 1
 fi
+echo "✅ activate-env file found"
+
+# Source the environment variables
+source .venv/bin/activate-env
 
 # Check required environment variables
 required_vars=("TG_TOKEN" "NOTION_TOKEN" "NOTION_DB_ID")
 missing_vars=0
 
 for var in "${required_vars[@]}"; do
-    if ! grep -q "^${var}=" .env; then
-        echo "❌ Missing ${var} in .env file"
+    if [ -z "${!var}" ]; then
+        echo "❌ Missing ${var} in activate-env"
         missing_vars=1
     fi
 done
