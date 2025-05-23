@@ -6,6 +6,7 @@ A Telegram bot that saves messages to a Notion database.
 
 - Forward messages from Telegram to Notion
 - Automatic timestamp tracking
+- Transcribes and logs voice messages using Whisper
 - Simple and reliable
 
 ## Setup
@@ -21,14 +22,22 @@ cd SecondBrain
 pip install -r requirements.txt
 ```
 
-3. Create a `.env` file with your credentials:
+3. Install ffmpeg (required for voice transcription):
+```bash
+# On macOS
+brew install ffmpeg
+# On Ubuntu/Debian
+sudo apt update && sudo apt install ffmpeg
+```
+
+4. Create a `.env` file with your credentials:
 ```
 TG_TOKEN=your_telegram_bot_token
 NOTION_TOKEN=your_notion_integration_token
 NOTION_DB_ID=your_notion_database_id
 ```
 
-4. Start the bot:
+5. Start the bot:
 ```bash
 ./start-bot.sh
 ```

@@ -1,5 +1,15 @@
 #!/bin/bash
 
+# Check for ffmpeg
+if ! command -v ffmpeg &> /dev/null; then
+    echo "❌ ffmpeg is not installed. Please install it before running the bot."
+    echo "On macOS: brew install ffmpeg"
+    echo "On Ubuntu/Debian: sudo apt install ffmpeg"
+    exit 1
+fi
+
+echo "✅ ffmpeg is installed."
+
 # Function to cleanup on exit
 cleanup() {
     echo "🛑 Stopping bot..."
