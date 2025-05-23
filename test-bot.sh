@@ -2,6 +2,16 @@
 
 echo "🔍 Testing SecondBrain Bot setup..."
 
+# Check for ffmpeg
+if ! command -v ffmpeg &> /dev/null; then
+    echo "❌ ffmpeg is not installed. Please install it before running the bot."
+    echo "On macOS: brew install ffmpeg"
+    echo "On Ubuntu/Debian: sudo apt install ffmpeg"
+    exit 1
+fi
+
+echo "✅ ffmpeg is installed."
+
 # Check if Python is installed
 if ! command -v python3 &> /dev/null; then
     echo "❌ Python 3 is not installed"
