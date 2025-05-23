@@ -1,3 +1,5 @@
 python-telegram-bot==21.9
 notion-client==2.2.1
-python-dotenv==1.0.1 
+python-dotenv==1.0.1
+openai-whisper
+ffmpeg-python==0.2.0 
