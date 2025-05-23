@@ -1,82 +1,51 @@
-# Telegram to Notion Bot
+# SecondBrain Bot
 
-A Telegram bot that automatically forwards messages to a Notion database, allowing you to easily save and organize your Telegram messages in Notion.
+A Telegram bot that saves messages to a Notion database.
 
 ## Features
 
-- Automatically saves incoming Telegram messages to a Notion database
-- Preserves message timestamps
-- Simple confirmation responses
-- Error handling with user feedback
+- Forward messages from Telegram to Notion
+- Automatic timestamp tracking
+- Simple and reliable
 
-## Prerequisites
-
-- Python 3.7 or higher
-- A Telegram Bot Token (obtained from [@BotFather](https://t.me/botfather))
-- A Notion API Token
-- A Notion Database ID
-- A public URL for webhook hosting
-
-## Environment Variables
-
-Create a `.env` file in the project root with the following variables:
-
-```env
-TG_TOKEN=your_telegram_bot_token
-NOTION_TOKEN=your_notion_api_token
-NOTION_DB_ID=your_notion_database_id
-APP_URL=your_public_url
-```
-
-## Installation
+## Setup
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
-cd <repository-name>
+git clone https://github.com/AntoineMoulet/SecondBrain.git
+cd SecondBrain
 ```
 
-2. Install the required dependencies:
+2. Install dependencies:
 ```bash
-pip install python-telegram-bot notion-client python-dotenv
+pip install -r requirements.txt
+```
+
+3. Create a `.env` file with your credentials:
+```
+TG_TOKEN=your_telegram_bot_token
+NOTION_TOKEN=your_notion_integration_token
+NOTION_DB_ID=your_notion_database_id
+```
+
+4. Start the bot:
+```bash
+./start-bot.sh
 ```
 
 ## Usage
 
-1. Set up your environment variables as described above
-2. Run the bot:
-```bash
-python bot.py
-```
+1. Start a chat with your bot on Telegram
+2. Send any message
+3. The message will be automatically saved to your Notion database
 
-The bot will start listening for messages on port 8080 and will forward any text messages it receives to your Notion database.
+## Development
 
-## How it Works
-
-1. The bot receives messages through a Telegram webhook
-2. When a text message is received, it extracts the content and timestamp
-3. The message is saved to your Notion database with:
-   - Message content in the "Message" property
-   - Timestamp in the "Date" property
-4. The bot responds with a confirmation message (👌) or an error message (❌) if something goes wrong
-
-## Notion Database Setup
-
-Your Notion database should have the following properties:
-- Message (Title type)
-- Date (Date type)
-
-## Error Handling
-
-The bot includes error handling that will:
-- Log errors to the console
-- Send a failure message (❌) to the user if something goes wrong
-- Print stack traces for debugging
+The bot is written in Python and uses:
+- python-telegram-bot for Telegram integration
+- notion-client for Notion API
+- python-dotenv for environment management
 
 ## License
 
-[Add your chosen license here]
-
-## Contributing
-
-[Add contribution guidelines if applicable] 
+MIT 
