@@ -51,6 +51,14 @@ class Config:
         return db_id
     
     @property
+    def openai_api_key(self) -> str:
+        """Get the OpenAI API key."""
+        key = os.getenv("OPENAI_API_KEY")
+        if not key:
+            raise ValueError("OPENAI_API_KEY environment variable is not set")
+        return key
+    
+    @property
     def is_production(self) -> bool:
         """Check if running in production environment."""
         return self.env == "production"
