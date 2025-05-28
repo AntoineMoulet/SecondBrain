@@ -33,6 +33,7 @@ sudo apt update && sudo apt install ffmpeg
 4. Create a `.env` file with your credentials:
 ```
 TG_TOKEN=your_telegram_bot_token
+TG_CHAT_ID=your_telegram_chat_id
 NOTION_TOKEN=your_notion_integration_token
 NOTION_DB_ID=your_notion_database_id
 ```
@@ -54,6 +55,13 @@ The bot is written in Python and uses:
 - python-telegram-bot for Telegram integration
 - notion-client for Notion API
 - python-dotenv for environment management
+
+## Environment Configuration
+
+The bot supports both local development and production environments:
+- Local development uses a `.env` file
+- Production uses Railway environment variables
+- Set `RAILWAY_ENVIRONMENT=production` in Railway for production mode
 
 ## License
 

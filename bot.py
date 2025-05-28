@@ -8,6 +8,7 @@ import logging
 import whisper
 import tempfile
 import ffmpeg
+from config import config
 
 # Set up logging
 logging.basicConfig(
@@ -46,9 +47,9 @@ async def save_to_notion(text: str, ts: datetime, source: str = "text") -> None:
         ts: The timestamp of the message
         source: The source of the message (text or voice)
     """
-    notion = Client(auth=os.getenv("NOTION_TOKEN"))
+    notion = Client(auth=config.notion_token)
     notion.pages.create(
-        parent={"database_id": os.getenv("NOTION_DB_ID")},
+        parent={"database_id": config.notion_database_id},
         properties={
             "Message": {"title": [{"text": {"content": text}}]},
             "Date": {"date": {"start": ts.isoformat()}}
@@ -139,20 +140,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         ) 
 
 def main():
-    # Get environment variables
-    tg_token = os.getenv("TG_TOKEN")
-    if not tg_token:
-        raise ValueError("TG_TOKEN environment variable is not set")
-    
-    # Build application
-    app = ApplicationBuilder().token(tg_token).build()
+    # Build application using config
+    app = ApplicationBuilder().token(config.telegram_token).build()
     
     # Add handlers
     app.add_handler(MessageHandler(filters.TEXT, handle_message))
     app.add_handler(MessageHandler(filters.VOICE, handle_voice))
     
     # Start polling
-    logger.info("Starting bot in polling mode...")
+    logger.info(f"Starting bot in {'production' if config.is_production else 'development'} mode...")
     app.run_polling()
 
 if __name__ == "__main__":
