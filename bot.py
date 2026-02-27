@@ -42,7 +42,7 @@ async def transcribe_voice(voice_file_path: str) -> str:
         logger.error(f"Error transcribing voice message: {e}")
         raise
 
-async def save_to_notion(text: str, ts: datetime, source: str = "text") -> None:
+async def save_to_notion(text: str, ts: datetime, source: str = "text") -> str:
     """
     Save a message to Notion database.
     
@@ -89,6 +89,8 @@ async def save_to_notion(text: str, ts: datetime, source: str = "text") -> None:
         
         if page_id:
             logger.info(f"Page successfully created in Notion with ID: {page_id}")
+            page_url = f"https://notion.so/{page_id.replace('-', '')}"
+            return page_url
         else:
             # This path means page creation failed to return an ID in any expected format.
             response_content = str(page_response)
@@ -129,12 +131,12 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             transcribed_text = await transcribe_voice(temp_voice.name)
             
             # Save to Notion
-            await save_to_notion(transcribed_text, update.message.date, "voice")
-            
+            page_url = await save_to_notion(transcribed_text, update.message.date, "voice")
+
             # Send success response
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
-                text=f"🎤 Transcrit: {transcribed_text}\n\n👌 Log sauvegardé"
+                text=f"🎤 Transcrit: {transcribed_text}\n\n👌 Log sauvegardé\n🔗 {page_url}"
             )
             
     except Exception as e:
@@ -169,12 +171,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         logger.info(f"Processing message: {content[:50]}...")
         
         # Save to Notion
-        await save_to_notion(content, ts, "text")
-        
+        page_url = await save_to_notion(content, ts, "text")
+
         # Send success response
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text="👌 Log sauvegardé"
+            text=f"👌 Log sauvegardé\n🔗 {page_url}"
         )
         
     except Exception as e:
