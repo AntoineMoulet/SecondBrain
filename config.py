@@ -51,6 +51,22 @@ class Config:
         return repo
 
     @property
+    def notion_token(self) -> str:
+        """Get the Notion integration token."""
+        token = os.getenv("NOTION_TOKEN")
+        if not token:
+            raise ValueError("NOTION_TOKEN environment variable is not set")
+        return token
+
+    @property
+    def notion_database_id(self) -> str:
+        """Get the Notion database ID."""
+        db_id = os.getenv("NOTION_DATABASE_ID")
+        if not db_id:
+            raise ValueError("NOTION_DATABASE_ID environment variable is not set")
+        return db_id
+
+    @property
     def openai_api_key(self) -> str:
         """Get the OpenAI API key."""
         key = os.getenv("OPENAI_API_KEY")
