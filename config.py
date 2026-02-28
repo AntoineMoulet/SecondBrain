@@ -61,9 +61,9 @@ class Config:
     @property
     def notion_database_id(self) -> str:
         """Get the Notion database ID."""
-        db_id = os.getenv("NOTION_DATABASE_ID")
+        db_id = os.getenv("NOTION_DB_ID")
         if not db_id:
-            raise ValueError("NOTION_DATABASE_ID environment variable is not set")
+            raise ValueError("NOTION_DB_ID environment variable is not set")
         return db_id
 
     @property
