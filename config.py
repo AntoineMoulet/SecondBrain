@@ -35,21 +35,21 @@ class Config:
         return os.getenv("TG_CHAT_ID")
     
     @property
-    def notion_token(self) -> str:
-        """Get the Notion integration token."""
-        token = os.getenv("NOTION_TOKEN")
+    def github_token(self) -> str:
+        """Get the GitHub token for vault writes."""
+        token = os.getenv("GITHUB_TOKEN")
         if not token:
-            raise ValueError("NOTION_TOKEN environment variable is not set")
+            raise ValueError("GITHUB_TOKEN environment variable is not set")
         return token
-    
+
     @property
-    def notion_database_id(self) -> str:
-        """Get the Notion database ID."""
-        db_id = os.getenv("NOTION_DB_ID")
-        if not db_id:
-            raise ValueError("NOTION_DB_ID environment variable is not set")
-        return db_id
-    
+    def github_repo(self) -> str:
+        """Get the GitHub repo (owner/repo) for the vault."""
+        repo = os.getenv("GITHUB_REPO")
+        if not repo:
+            raise ValueError("GITHUB_REPO environment variable is not set")
+        return repo
+
     @property
     def openai_api_key(self) -> str:
         """Get the OpenAI API key."""
