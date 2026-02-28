@@ -5,10 +5,8 @@ from datetime import datetime
 from telegram import Update
 from telegram.ext import ContextTypes
 import logging
-import whisper
-import tempfile
-import ffmpeg
 import httpx
+from openai import AsyncOpenAI
 from config import config
 from llm_analyzer import analyzer
 from telegram.ext import CommandHandler
@@ -20,26 +18,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Initialize Whisper model
-model = whisper.load_model("base")
-
-async def transcribe_voice(voice_file_path: str) -> str:
-    """
-    Transcribe a voice message using Whisper.
-    
-    Args:
-        voice_file_path: Path to the voice message file
-        
-    Returns:
-        Transcribed text
-    """
-    try:
-        # Transcribe the audio in French
-        result = model.transcribe(voice_file_path, language="fr")
-        return result["text"]
-    except Exception as e:
-        logger.error(f"Error transcribing voice message: {e}")
-        raise
+async def transcribe_voice(audio_bytes: bytes) -> str:
+    client = AsyncOpenAI(api_key=config.openai_api_key)
+    transcript = await client.audio.transcriptions.create(
+        model="whisper-1",
+        file=("voice.ogg", audio_bytes, "audio/ogg"),
+        language="fr"
+    )
+    return transcript.text
 
 async def save_to_vault(text: str, ts: datetime, source: str = "text") -> str:
     """
@@ -103,25 +89,20 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         if not voice:
             return
 
-        # Download the voice message
+        # Download and transcribe via OpenAI API
         voice_file = await context.bot.get_file(voice.file_id)
-        
-        # Create a temporary file for the voice message
-        with tempfile.NamedTemporaryFile(suffix='.ogg', delete=False) as temp_voice:
-            await voice_file.download_to_drive(temp_voice.name)
-            
-            # Transcribe the voice message
-            transcribed_text = await transcribe_voice(temp_voice.name)
-            
-            # Save to vault
-            vault_url = await save_to_vault(transcribed_text, update.message.date, "voice")
+        audio_bytes = bytes(await voice_file.download_as_bytearray())
+        transcribed_text = await transcribe_voice(audio_bytes)
 
-            # Send success response
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text=f"🎤 Transcrit: {transcribed_text}\n\n[👌 Sauvegardé]({vault_url})",
-                parse_mode="Markdown"
-            )
+        # Save to vault
+        vault_url = await save_to_vault(transcribed_text, update.message.date, "voice")
+
+        # Send success response
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=f"🎤 Transcrit: {transcribed_text}\n\n[👌 Sauvegardé]({vault_url})",
+            parse_mode="Markdown"
+        )
             
     except Exception as e:
         # Log the error
@@ -192,7 +173,7 @@ Capture tes pensées directement dans ton vault Obsidian.
 
 *Fonctionnalités :*
 • Sauvegarde les messages texte dans vault/captures/
-• Transcrit les messages vocaux (Whisper)
+• Transcrit les messages vocaux (OpenAI Whisper API)
 • Analyse IA du contenu (topic + résumé)
 • Format Markdown avec métadonnées
 
