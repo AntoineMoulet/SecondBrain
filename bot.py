@@ -5,9 +5,7 @@ from datetime import datetime
 from telegram import Update
 from telegram.ext import ContextTypes
 import logging
-import whisper
 import tempfile
-import ffmpeg
 import httpx
 from config import config
 from llm_analyzer import analyzer
@@ -20,23 +18,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Initialize Whisper model
-model = whisper.load_model("base")
-
 async def transcribe_voice(voice_file_path: str) -> str:
-    """
-    Transcribe a voice message using Whisper.
-    
-    Args:
-        voice_file_path: Path to the voice message file
-        
-    Returns:
-        Transcribed text
-    """
+    """Transcribe a voice message using OpenAI Whisper API."""
     try:
-        # Transcribe the audio in French
-        result = model.transcribe(voice_file_path, language="fr")
-        return result["text"]
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(api_key=config.openai_api_key)
+        with open(voice_file_path, "rb") as audio_file:
+            transcript = await client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file,
+                language="fr"
+            )
+        return transcript.text
     except Exception as e:
         logger.error(f"Error transcribing voice message: {e}")
         raise
