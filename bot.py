@@ -1,7 +1,6 @@
 import os
+import base64
 from telegram.ext import ApplicationBuilder, MessageHandler, filters
-from notion_client import Client
-from notion_client.errors import APIResponseError
 from datetime import datetime
 from telegram import Update
 from telegram.ext import ContextTypes
@@ -9,9 +8,9 @@ import logging
 import whisper
 import tempfile
 import ffmpeg
+import httpx
 from config import config
 from llm_analyzer import analyzer
-import json
 from telegram.ext import CommandHandler
 
 # Set up logging
@@ -42,9 +41,9 @@ async def transcribe_voice(voice_file_path: str) -> str:
         logger.error(f"Error transcribing voice message: {e}")
         raise
 
-async def save_to_notion(text: str, ts: datetime, source: str = "text") -> str:
+async def save_to_vault(text: str, ts: datetime, source: str = "text") -> str:
     """
-    Save a message to Notion database.
+    Save a message to the Obsidian vault via GitHub API.
 
     Args:
         text: The message text to save
@@ -52,62 +51,43 @@ async def save_to_notion(text: str, ts: datetime, source: str = "text") -> str:
         source: The source of the message (text or voice)
 
     Returns:
-        The URL of the created Notion page
+        The GitHub URL of the created file
     """
-    try:
-        logger.info("Starting content analysis...")
-        # Analyze the content
-        analysis_dict = await analyzer.analyze_content(text)
-        logger.info(f"Analysis result: {analysis_dict}")
-        
-        # Create Notion client
-        notion = Client(auth=config.notion_token)
-        logger.info("Notion client created")
-        
-        # Prepare page properties
-        page_properties = {
-            "Message": {"title": [{"text": {"content": text}}] },
-            "Date": {"date": {"start": ts.isoformat()} },
-            "Topic": {"rich_text": [{"text": {"content": analysis_dict.get("topic", "Unknown")}}] },
-            "Summary": {"rich_text": [{"text": {"content": analysis_dict.get("summary", "No summary available")}}] }
-        }
-        
-        logger.info(f"Attempting to create page in Notion with properties: {json.dumps(page_properties, indent=2)}")
-        
-        # Create the page
-        page_response = notion.pages.create(
-            parent={"database_id": config.notion_database_id},
-            properties=page_properties
-        )
-        
-        logger.info(f"Raw response from Notion API (pages.create): {page_response}")
+    logger.info("Starting content analysis...")
+    analysis_dict = await analyzer.analyze_content(text)
+    logger.info(f"Analysis result: {analysis_dict}")
 
-        page_id = None
-        # Check if the response is a dictionary (observed behavior)
-        if isinstance(page_response, dict):
-            page_id = page_response.get("id")
-        # Fallback: check if it's an object with an 'id' attribute (e.g., Pydantic model)
-        elif hasattr(page_response, "id"):
-            page_id = page_response.id
-        
-        if page_id:
-            logger.info(f"Page successfully created in Notion with ID: {page_id}")
-            page_url = page_response.get("url") if isinstance(page_response, dict) else getattr(page_response, "url", None)
-            return page_url or f"https://notion.so/{page_id.replace('-', '')}"
-        else:
-            # This path means page creation failed to return an ID in any expected format.
-            response_content = str(page_response)
-            logger.error(f"Notion page creation response did not contain a usable 'id'. Response: {response_content}")
-            raise ValueError(f"Failed to create page in Notion - response missing 'id' or in unexpected format. Notion API returned: {response_content}")
-            
-    except APIResponseError as e: # Specifically catch Notion API errors
-        logger.error(f"Notion API Error during page creation: Status {e.status}, Code: {e.code}, Message: {e.message}")
-        logger.error(f"Notion API Error Body: {e.body}")
-        raise ValueError(f"Notion API Error: {e.message} (Status: {e.status}, Code: {e.code})") from e
-    except Exception as e:
-        logger.error(f"Unexpected error in save_to_notion: {str(e)}")
-        logger.error("Full error details for save_to_notion:", exc_info=True)
-        raise
+    topic_slug = analysis_dict.get("topic", "note").lower().replace(" ", "-")
+    filename = ts.strftime("%Y-%m-%d-%H%M%S") + f"-{topic_slug}.md"
+
+    file_content = f"""---
+date: {ts.isoformat()}
+type: {source}
+topic: {analysis_dict.get("topic", "")}
+summary: {analysis_dict.get("summary", "")}
+---
+
+{text}
+"""
+    path = f"vault/captures/{filename}"
+    url = f"https://api.github.com/repos/{config.github_repo}/contents/{path}"
+
+    async with httpx.AsyncClient() as client:
+        response = await client.put(
+            url,
+            headers={
+                "Authorization": f"token {config.github_token}",
+                "Accept": "application/vnd.github.v3+json"
+            },
+            json={
+                "message": f"capture: {analysis_dict.get('topic', 'note')}",
+                "content": base64.b64encode(file_content.encode()).decode()
+            }
+        )
+        response.raise_for_status()
+
+    logger.info(f"Saved capture to vault: {path}")
+    return f"https://github.com/{config.github_repo}/blob/main/{path}"
 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
@@ -133,13 +113,13 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             # Transcribe the voice message
             transcribed_text = await transcribe_voice(temp_voice.name)
             
-            # Save to Notion
-            notion_url = await save_to_notion(transcribed_text, update.message.date, "voice")
+            # Save to vault
+            vault_url = await save_to_vault(transcribed_text, update.message.date, "voice")
 
             # Send success response
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
-                text=f"🎤 Transcrit: {transcribed_text}\n\n[👌 Log sauvegardé]({notion_url})",
+                text=f"🎤 Transcrit: {transcribed_text}\n\n[👌 Sauvegardé]({vault_url})",
                 parse_mode="Markdown"
             )
             
@@ -174,13 +154,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         
         logger.info(f"Processing message: {content[:50]}...")
         
-        # Save to Notion
-        notion_url = await save_to_notion(content, ts, "text")
+        # Save to vault
+        vault_url = await save_to_vault(content, ts, "text")
 
         # Send success response
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text=f"[👌 Log sauvegardé]({notion_url})",
+            text=f"[👌 Sauvegardé]({vault_url})",
             parse_mode="Markdown"
         )
         
@@ -197,26 +177,26 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
-    await update.message.reply_text('👋 Hi! I\'m your SecondBrain bot. Send me any message and I\'ll save it to Notion with an AI analysis!')
+    await update.message.reply_text('👋 Salut ! Je suis ton bot SecondBrain. Envoie-moi un message ou un vocal, je le sauvegarde dans ton vault.')
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
     help_text = """
-🤖 *SecondBrain Bot Help*
+🧠 *SecondBrain Bot*
 
-I can help you save and analyze your messages in Notion:
+Capture tes pensées directement dans ton vault Obsidian.
 
-*Commands:*
-/start - Start the bot
-/help - Show this help message
+*Commandes :*
+/start - Démarrer le bot
+/help - Afficher cette aide
 
-*Features:*
-• Save text messages to Notion
-• Transcribe voice messages
-• AI analysis of content
-• Automatic topic and summary generation
+*Fonctionnalités :*
+• Sauvegarde les messages texte dans vault/captures/
+• Transcrit les messages vocaux (Whisper)
+• Analyse IA du contenu (topic + résumé)
+• Format Markdown avec métadonnées
 
-Just send me any message or voice note!
+Envoie n'importe quel message ou vocal !
 """
     await update.message.reply_text(help_text, parse_mode='Markdown')
 
